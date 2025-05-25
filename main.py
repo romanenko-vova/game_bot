@@ -1,5 +1,10 @@
 import logging
-from telegram import Update
+from telegram import (
+    Update,
+    ReplyKeyboardMarkup,
+    InlineKeyboardMarkup,
+    InlineKeyboardButton,
+)
 from telegram.ext import (
     ApplicationBuilder,
     ContextTypes,
@@ -7,6 +12,7 @@ from telegram.ext import (
     MessageHandler,
     filters,
     ConversationHandler,
+    CallbackQueryHandler,
 )
 
 import os
@@ -27,10 +33,18 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # update.effective_user — вся инфа о человеке
     # update.effective_message — вся инфа о сообщении
     # update.effective_chat — вся инфа о диалоге
-    #
+
+    keyboard = [
+        [InlineKeyboardButton("КНБ", callback_data="knb_data")],
+        [InlineKeyboardButton("Быки и коровы", callback_data="bac_data")],
+        [InlineKeyboardButton("Угадай число", callback_data="guess_data")],
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
         text=f"{update.effective_user.name}, привет!\n/knb",
+        reply_markup=reply_markup,
     )
     return MAINMENU
 
@@ -48,6 +62,10 @@ async def talk(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def knb_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    if query:
+        await query.answer()
+    
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
         text=f"Ты попал в игру камень ножницы бумага",
@@ -74,7 +92,11 @@ if __name__ == "__main__":
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler("start", start)],
         states={
-            MAINMENU: [CommandHandler("knb", knb_start)],
+            MAINMENU: [
+                CommandHandler("knb", knb_start),
+                CallbackQueryHandler(knb_start, pattern="^knb_data$"),
+                CallbackQueryHandler(None, pattern="^guess_start")
+            ],
             KNB: [MessageHandler(filters.TEXT & ~filters.COMMAND, knb)],
         },
         fallbacks=[CommandHandler("start", start)],
